@@ -1,0 +1,66 @@
+{
+    "expo":  {
+                 "name":  "quickCart",
+                 "slug":  "quickCart",
+                 "version":  "1.0.0",
+                 "orientation":  "portrait",
+                 "icon":  "./assets/images/icon.png",
+                 "scheme":  "quickcart",
+                 "userInterfaceStyle":  "automatic",
+                 "newArchEnabled":  true,
+                 "ios":  {
+                             "supportsTablet":  true
+                         },
+                 "android":  {
+                                 "package":  "com.jyoti929.quickCart",
+                                 "adaptiveIcon":  {
+                                                      "backgroundColor":  "#E6F4FE",
+                                                      "foregroundImage":  "./assets/images/adaptive-icon.png"
+                                                  },
+                                 "edgeToEdgeEnabled":  true,
+                                 "predictiveBackGestureEnabled":  false
+                             },
+                 "web":  {
+                             "output":  "static",
+                             "favicon":  "./assets/images/favicon.png"
+                         },
+                 "plugins":  [
+                                 "expo-router",
+                                 [
+                                     "expo-splash-screen",
+                                     {
+                                         "image":  "./assets/images/icon.png",
+                                         "imageWidth":  200,
+                                         "resizeMode":  "contain",
+                                         "backgroundColor":  "#F4F6F5",
+                                         "dark":  {
+                                                      "backgroundColor":  "#1E6B56"
+                                                  }
+                                     }
+                                 ]
+                             ],
+                 "experiments":  {
+                                     "typedRoutes":  true,
+                                     "reactCompiler":  true
+                                 },
+                 "extra":  {
+                               "router":  {
+
+                                          },
+                               "eas":  {
+                                           "projectId":  "5d2fbc87-a3b8-491a-ab7c-189f3412b30a"
+                                       },
+                               "firebase":  {
+                                                "apiKey":  "AIzaSyDhQ166kRf-WO4xclX-NvSy2j8dtEyMCTw",
+                                                "authDomain":  "quickcart-shared.firebaseapp.com",
+                                                "projectId":  "quickcart-shared",
+                                                "storageBucket":  "quickcart-shared.firebasestorage.app",
+                                                "messagingSenderId":  "221503732530",
+                                                "appId":  "1:221503732530:web:f7e20e123bec7f36ceb52b",
+                                                "measurementId":  "G-ES1M12WKE6"
+                                            },
+                               "otpUrl":  "https://quickcart-otp-server.onrender.com"
+                           },
+                 "owner":  "jyoti929"
+             }
+}

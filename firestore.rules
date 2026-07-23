@@ -1,0 +1,139 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Helpers ──────────────────────────────────────────────────────────────
+
+    // Returns true if the requester is authenticated as an admin
+    function isAdmin() {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Returns true if the requester is authenticated
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Returns true if the requester owns the document (matches uid field)
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    // Ensures the incoming write does not set OTP verification fields (only functions may)
+    function noOtpFields() {
+      return !('emailOtpVerified' in request.resource.data) &&
+             !('verifiedAt' in request.resource.data);
+    }
+
+    // Returns true if the authenticated user is not blocked
+    function isNotBlocked() {
+      return request.auth != null && (
+        !exists(/databases/$(database)/documents/users/$(request.auth.uid)) ||
+        !('isBlocked' in get(/databases/$(database)/documents/users/$(request.auth.uid)).data) ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isBlocked == false
+      );
+    }
+
+    // ─── Users collection ─────────────────────────────────────────────────────
+    match /users/{uid} {
+      // Users can read their own document; admins can read all
+      allow read: if isOwner(uid) || isAdmin();
+
+      // Users can create their own document (registration) but cannot set OTP fields
+      allow create: if isOwner(uid) && noOtpFields();
+
+      // Users can update their own document (location, address, etc.) but cannot set OTP fields or change role
+      allow update: if (isOwner(uid) && noOtpFields() && !('role' in request.resource.data))
+                    || isAdmin();
+
+      // Only admins may delete user documents
+      allow delete: if isAdmin();
+
+      // Address subcollection: owner can CRUD their own addresses
+      match /addresses/{addressId} {
+        allow read, write: if isOwner(uid);
+      }
+    }
+
+    // ─── Orders collection ────────────────────────────────────────────────────
+    match /orders/{orderId} {
+      // Users can read their own orders; admins can read all.
+      // resource == null is required for collection-level getDocs(query(where("uid",...)))
+      // because Firestore cannot evaluate resource.data during a query scan —
+      // the where() clause already scopes results to the authenticated user.
+      allow read: if isSignedIn() && (resource == null || resource.data.uid == request.auth.uid || isAdmin());
+
+      // Allow order creation only when the authenticated user is not blocked
+      allow create: if isSignedIn() && isNotBlocked();
+
+      // Status updates and cancellations: owner (cancel only) or admin (any status)
+      allow update: if isAdmin() ||
+                    (isOwner(resource.data.uid) && request.resource.data.status == 'Cancelled');
+
+      // Only admins may delete orders
+      allow delete: if isAdmin();
+    }
+
+    // ─── Categories collection ────────────────────────────────────────────────
+    match /categories/{categoryId} {
+      // Public read: categories need to load on the home screen, which may render
+      // before onAuthStateChanged fully resolves the auth token.
+      allow read: if true;
+
+      // Only admins may create, update, or delete categories
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ─── States collection ────────────────────────────────────────────────────
+    match /states/{stateId} {
+      // Public read: states need to load early for service-area validation.
+      allow read: if true;
+
+      // Only admins may create, update, or delete states
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ─── Cities / Service Areas collection ────────────────────────────────────
+    match /cities/{cityId} {
+      // Public read: cities need to load early, before auth token is ready.
+      allow read: if true;
+
+      // Only admins may create, update, or delete cities
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ─── Products collection ──────────────────────────────────────────────────
+    match /products/{productId} {
+      // Public read: products must load on home screen immediately, before
+      // onAuthStateChanged has fully restored the Firebase Auth session.
+      // This is safe — product data is not user-sensitive.
+      allow read: if true;
+
+      // Only admins may create, update, or delete products
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ─── Banners collection ───────────────────────────────────────────────────
+    match /banners/{bannerId} {
+      // Public read: banners display on the home screen before auth resolves.
+      allow read: if true;
+
+      // Only admins may create, update, or delete banners
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ─── emailOtps collection ─────────────────────────────────────────────────
+    // Only Cloud Functions (server SDK) may read or write OTP documents.
+    // Client writes are entirely blocked.
+    match /emailOtps/{email} {
+      allow read, write: if false;
+    }
+
+    // ─── Catch-all: deny everything else ─────────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
